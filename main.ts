@@ -157,41 +157,59 @@ export default class MyPlugin extends Plugin {
   }
 
   handleBlock(
-    file: TFile,
-    editor: Editor,
-    block: ListItemCache | SectionCache,
-    isEmbed: boolean
-  ) {
-    const blockId = block.id;
+  file: TFile,
+  editor: Editor,
+  block: ListItemCache | SectionCache,
+  isEmbed: boolean
+) {
+  const blockId = block.id;
 
-    // Copy existing block id
-    if (blockId) {
-      return navigator.clipboard.writeText(
-        `${isEmbed ? "!" : ""}${this.app.fileManager.generateMarkdownLink(
-          file,
-          "",
-          "#^" + blockId
-        )}`
-      );
-    }
+  // Obtener el contenido del bloque
+  const blockText = this.getBlockText(editor, block);
 
-    // Add a block id
-    const sectionEnd = block.position.end;
-    const end: EditorPosition = {
-      ch: sectionEnd.col,
-      line: sectionEnd.line,
-    };
-
-    const id = generateId();
-    const spacer = shouldInsertAfter(block) ? "\n\n" : " ";
-
-    editor.replaceRange(`${spacer}^${id}`, end);
-    navigator.clipboard.writeText(
-      `${isEmbed ? "!" : ""}${this.app.fileManager.generateMarkdownLink(
-        file,
-        "",
-        "#^" + id
-      )}`
+  // Copiar el enlace con el contenido del bloque
+  if (blockId) {
+    return navigator.clipboard.writeText(
+      `${isEmbed ? "!" : ""}[${blockText}](#^${blockId})`
     );
   }
+
+  // Si no tiene un ID, generamos uno nuevo y lo insertamos en el editor
+  const sectionEnd = block.position.end;
+  const end: EditorPosition = {
+    ch: sectionEnd.col,
+    line: sectionEnd.line,
+  };
+
+  const id = generateId();
+  const spacer = shouldInsertAfter(block) ? "\n\n" : " ";
+
+  // Insertar el ID en el bloque
+  editor.replaceRange(`${spacer}^${id}`, end);
+
+  // Copiar el enlace con el contenido del bloque
+  navigator.clipboard.writeText(
+    `${isEmbed ? "!" : ""}[${blockText}](#^${id})`
+  );
 }
+
+// Función para obtener el texto del bloque
+getBlockText(editor: Editor, block: ListItemCache | SectionCache): string {
+  if (block.type === "heading") {
+    // Si es un encabezado, devolver el texto del encabezado
+    return block.heading;
+  } else if (block.type === "list") {
+    // Si es un ítem de lista, devolver el texto del ítem de lista
+    const line = editor.getLine(block.position.start.line);
+    return line.trim();
+  } else if (block.type === "section") {
+    // Si es una sección, devolver el texto de la primera línea de la sección
+    const line = editor.getLine(block.position.start.line);
+    return line.trim();
+  }
+
+  // Si no es ninguno de los anteriores, devolver un texto por defecto
+  return "Bloque sin nombre";
+}
+  
+  
